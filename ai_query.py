@@ -13,13 +13,11 @@ chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection(name="latoken_info")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Запоминаем историю сообщений
-# chat_history = []
-# ask_counter = 0
 
-
-# Функция для получения данных из ChromaDB
-def fetch_data_from_chromadb(query: str, top_k: int = 10):
+def fetch_data_from_chromadb(query: str, top_k: int = 10) -> str:
+    """
+    Сбор данных из Chroma
+    """
     results = collection.query(query_texts=[query], n_results=top_k)
     main_result = ''
     for row_list in results['documents']:
@@ -30,14 +28,20 @@ def fetch_data_from_chromadb(query: str, top_k: int = 10):
 
 async def ai_generate_answer(context: str, query: str, tg_id: int) -> str:
     """
-    # Функция для генерации ответа с использованием GPT-4
+    Функция для генерации ответа с использованием GPT-4
+    :param context: контекст диалога
+    :param query: запрос
+    :param tg_id: идентификатор юзера в тг
+    :return: ответ от ии
     """
-    # global ask_counter
+    # извлечение переменных счетчика, истории сообщений
     ask_counter = await redis_counter_plus(tg_id)
     chat_history = await redis_get_all_answers(tg_id)
+    # флаг задания вопроса
     question = False
-
+    # инициализация ИИ
     client = AsyncOpenAI(api_key=os.getenv('OPENAI_TOKEN'))
+    # поведение в зависимости от числа сообщений
     if ask_counter <= 2 and len(chat_history) <= 2:
         messages = [
             {"role": "system",
@@ -48,6 +52,7 @@ async def ai_generate_answer(context: str, query: str, tg_id: int) -> str:
             {"role": "system",
              "content": "Tell me whether the answer to the previous question was correct based on the context data. Answer in Russian"},
         ]
+    # задача вопроса на каждом третьем сообщении
     elif ask_counter >= 3:
         messages = [
             {"role": "system",
@@ -70,7 +75,7 @@ async def ai_generate_answer(context: str, query: str, tg_id: int) -> str:
     # Добавляем новое сообщение от пользователя и контекст
     messages.append({"role": "user", "content": query})
     messages.append({"role": "assistant", "content": context})
-
+    # отправляем запрос
     response = await client.chat.completions.create(
         messages=messages,
         model="gpt-4o",
@@ -81,18 +86,21 @@ async def ai_generate_answer(context: str, query: str, tg_id: int) -> str:
     # Получаем и возвращаем ответ
     answer = response.choices[0].message.content
     # Запоминаем ответ модели в истории
-    # chat_history.append({"role": "assistant", "content": answer})
     await redis_add_answer(tg_id, {"role": "assistant", "content": answer})
 
     return answer
 
 
-# Основной метод для обработки запросов
-async def ai_answer_query(query: str, tg_id: int) -> str:
-    # Получаем данные из ChromaDB
-    context = fetch_data_from_chromadb(query)
-    # print(context)
+async def ai_answer_query(query: str, tg_id: int) -> str | bool:
+    """
+    Основной метод для обработки запросов
+    """
+    try:
+        # Получаем данные из ChromaDB
+        context = fetch_data_from_chromadb(query)
 
-    # Генерируем ответ с использованием GPT-4
-    answer = await ai_generate_answer(context, query, tg_id)
-    return answer
+        # Генерируем ответ с использованием GPT-4
+        answer = await ai_generate_answer(context, query, tg_id)
+        return answer
+    except Exception:
+        return False

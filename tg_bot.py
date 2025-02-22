@@ -28,10 +28,13 @@ async def handle_message(message: Message):
     """
     Обработчик всех входящих сообщений
     """
+    # определяем id и текст юзера
     tg_id = message.from_user.id
     text = message.text
-
+    # генерируем ответ
     answer = await ai_answer_query(text, tg_id)
+    if answer is False:
+        await message.answer('Извините.. Произошла ошибка обработки сообщения')
     await message.answer(answer)
 
 

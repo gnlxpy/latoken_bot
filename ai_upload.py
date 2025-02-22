@@ -7,13 +7,13 @@ collection = chroma_client.get_or_create_collection(name="latoken_info")
 
 # Разбиение текста на части (например, предложения или абзацы)
 def split_text(text, max_tokens=1000):
-    # Используем tiktoken для подсчета токенов
+    """
+    Используем tiktoken для подсчета токенов
+    """
     enc = tiktoken.get_encoding("cl100k_base")
     words = text.split()
-    current_chunk = []
-    current_length = 0
-    chunks = []
-
+    current_chunk, chunks, current_length = [], [], 0
+    # разбиваем текст по словам
     for word in words:
         token_count = len(enc.encode(word))
         if current_length + token_count > max_tokens:
@@ -31,13 +31,17 @@ def split_text(text, max_tokens=1000):
 
 
 def upload_from_file(filename: str):
-    # Пример текста
+    """
+    Загрузка из файла
+    """
+    # Открываем файл
     with open(filename) as f:
         text = f.read()
 
     # Разбиение текста на части и добавление в базу данных
     chunks = split_text(text)
 
+    # загружаем частями
     for chunk in chunks:
         collection.add(
             documents=[chunk],

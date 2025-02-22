@@ -42,9 +42,7 @@ async def redis_get_all_answers(key: int) -> list | bool:
     try:
         async with redis_conn() as r:
             items_json = await r.lrange(f'chat_history_{key}', 0, -1)
-            # print('items_json', items_json)
             items = [json.loads(item) for item in items_json]
-            # print('items', items)
             return items
     except Exception:
         traceback.print_exc()
