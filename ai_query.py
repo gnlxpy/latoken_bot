@@ -11,7 +11,7 @@ load_dotenv()
 # Инициализация векторной базы ChromaDB
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection(name="latoken_info")
-# os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Запоминаем историю сообщений
 # chat_history = []
